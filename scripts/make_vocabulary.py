@@ -1,3 +1,4 @@
+"""Reduce the number of words from input vocabularies."""
 from pathlib import Path
 
 import json
@@ -42,7 +43,11 @@ def main(
                 vocabulary,
             )
         )
-        words[language] = pd.Series(selected).drop_duplicates()
+        df = (
+            pd.Series(selected).drop_duplicates().to_frame().rename(columns={0: "word"})
+        )
+        df["length"] = df["word"].apply(len)
+        words[language] = df
         print(f"Only {len(words[language])} are kept")
         words[language].to_csv(dst.joinpath(f"{language}.csv"))
 
