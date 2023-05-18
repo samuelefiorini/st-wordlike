@@ -12,6 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 _ = st.session_state.setdefault("random_word", None)
+_ = st.session_state.setdefault("trials", [])
 
 
 @st.cache_data
@@ -22,6 +23,20 @@ def load_vocabulary(path: str, word_length: int) -> pd.Series:
 
 def restart():
     st.session_state["random_word"] = None
+    st.session_state["trials"] = []
+    st.experimental_rerun()
+
+
+def is_legit(trial: str, vocabulary: list) -> bool:
+    return trial in vocabulary["word"].values
+
+
+def get_empty_trials_table(word_length: int, max_n_trials: int) -> pd.DataFrame:
+    return pd.DataFrame(
+        [[None] * word_length] * max_n_trials,
+        index=[f"Trial {i + 1}" for i in range(max_n_trials)],
+        columns=[f"{i + 1}" for i in range(word_length)],
+    )
 
 
 def main():
@@ -48,16 +63,62 @@ def main():
     if st.session_state["random_word"] is None:
         st.session_state["random_word"] = vocabulary["word"].sample(1).item()
 
-    # Trials table
-    trials = pd.DataFrame(
-        [[""] * word_length] * max_n_trials,
-        index=[f"Trial {i + 1}" for i in range(max_n_trials)],
-        columns=[f"{i + 1}" for i in range(word_length)],
-    )
-    trials = st.experimental_data_editor(trials, use_container_width=True)
+    # Attempts recap
+    table = st.empty()
 
+    # Trials submission
+    trial = None
+    if len(list(st.session_state["trials"])) <= max_n_trials:
+        with st.form("trials_form", clear_on_submit=True):
+            trial_parts = {}
+            columns = st.columns(word_length)
+            for i, col in enumerate(columns):
+                with col:
+                    trial_parts[i] = st.text_input(
+                        f"{i}",
+                        key=f"trial_{len(st.session_state['trials'])}_{i}",
+                        max_chars=1,
+                        placeholder="",
+                        label_visibility="collapsed",
+                    )
+
+            # Submit a new trial
+            submitted = st.form_submit_button("Enter")
+            if submitted:
+                trial = "".join(trial_parts.values()).lower()
+    else:
+        st.title("💀 GAME OVER 💀")
+        st.write(
+            f"The secret random word was: `{st.session_state['random_word'].upper()}`"
+        )
+
+    if trial is not None:
+        if (
+            is_legit(trial, vocabulary)
+            and (trial not in list(st.session_state["trials"]))
+            and not (trial == st.session_state["random_word"])
+        ):
+            st.session_state["trials"].append(trial)
+            st.experimental_rerun()
+        elif trial in list(st.session_state["trials"]):
+            st.warning("🤦🏻‍♂️ You cannot submit the same word twice!")
+        elif not is_legit(trial, vocabulary):
+            st.error(f"❌ Unknown word: {trial}")
+        elif trial == st.session_state["random_word"]:
+            st.success("🎉 Congratulations!")
+            st.balloons()
+
+    # Show trials recap
+    if len(st.session_state["trials"]):
+        columns = table.columns(word_length)
+        for word in st.session_state["trials"]:
+            for col, char in zip(columns, word):
+                with col:
+                    st.title(char.upper())
     if cheat:
-        st.title(f"The secret random word is: `{st.session_state['random_word']}`")
+        st.title(
+            f"The secret random word is: `{st.session_state['random_word'].upper()}`"
+        )
 
 
 if __name__ == "__main__":
