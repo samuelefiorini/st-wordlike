@@ -112,11 +112,22 @@ def main():
     if len(st.session_state["trials"]):
         columns = table.columns(word_length)
         for word in st.session_state["trials"]:
-            for col, char in zip(columns, word):
+            for i, (col, char) in enumerate(zip(columns, word.upper())):
+                if (char in st.session_state["random_word"].upper()) and (
+                    st.session_state["random_word"].upper()[i] != char
+                ):
+                    color = "orange"
+                elif (char in st.session_state["random_word"].upper()) and (
+                    st.session_state["random_word"].upper()[i] == char
+                ):
+                    color = "green"
+                else:
+                    color = "red"
+
                 with col:
-                    st.title(char.upper())
+                    st.title(f":{color}[{char}]")
     if cheat:
-        st.title(
+        st.sidebar.title(
             f"The secret random word is: `{st.session_state['random_word'].upper()}`"
         )
 
