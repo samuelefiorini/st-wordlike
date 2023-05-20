@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+from collections import Counter
 
 from pathlib import Path
 
@@ -13,6 +14,7 @@ st.set_page_config(
 )
 _ = st.session_state.setdefault("random_word", None)
 _ = st.session_state.setdefault("trials", [])
+_ = st.session_state.setdefault("trial_points", {})
 
 
 @st.cache_data
@@ -24,6 +26,7 @@ def load_vocabulary(path: str, word_length: int) -> pd.Series:
 def restart():
     st.session_state["random_word"] = None
     st.session_state["trials"] = []
+    st.session_state["trial_points"] = {}
     st.experimental_rerun()
 
 
@@ -108,14 +111,28 @@ def main():
             st.success("🎉 Congratulations!")
             st.balloons()
 
+    # evaluate trial points
+    for word in st.session_state["trials"]:
+        guessed_any_order = len(
+            set(st.session_state["random_word"]).intersection(set(word))
+        )
+        guessed_right_order = sum(
+            [g == c for g, c in zip(word, st.session_state["random_word"])]
+        )
+        st.session_state["trial_points"][word] = guessed_any_order + guessed_right_order
+
     # Show trials recap
     if len(st.session_state["trials"]):
         columns = table.columns(word_length)
         for word in st.session_state["trials"]:
             for i, (col, char) in enumerate(zip(columns, word.upper())):
-                if (char in st.session_state["random_word"].upper()) and (
-                    st.session_state["random_word"].upper()[i] != char
-                ):
+                if (
+                    char
+                    in set(st.session_state["random_word"].upper()).difference(
+                        set(word[:i])
+                    )
+                ) and (st.session_state["random_word"].upper()[i] != char):
+                    # char in word, but in the wrong position
                     color = "orange"
                 elif (char in st.session_state["random_word"].upper()) and (
                     st.session_state["random_word"].upper()[i] == char
@@ -126,9 +143,38 @@ def main():
 
                 with col:
                     st.title(f":{color}[{char}]")
+
     if cheat:
         st.sidebar.title(
             f"The secret random word is: `{st.session_state['random_word'].upper()}`"
+        )
+
+    with st.sidebar:
+        n_words = len(vocabulary["word"])
+        # Filter words containing guessed chars
+        chars = "".join(st.session_state["trials"])
+        all_guessed = set(st.session_state["random_word"]).intersection(set(chars))
+        all_guessed_counts = {
+            c: Counter(st.session_state["random_word"])[c] for c in all_guessed
+        }
+        if len(all_guessed) > 0:
+            st.write(all_guessed_counts)
+        right_lettering = vocabulary["word"].apply(
+            lambda w: all(c in w for c in all_guessed)
+            and all(
+                Counter(w)[c] == all_guessed_counts.get(c, -1)
+                for c in set(w).intersection(st.session_state["random_word"])
+            )
+        )
+
+        eligible_words = vocabulary[right_lettering]
+        if st.checkbox("Show hints"):
+            st.write(eligible_words["word"])
+
+        st.caption("Stats:")
+        st.caption(f"- N° eligible words: {len(eligible_words)}")
+        st.caption(
+            f"- Chance: {(100 * (max_n_trials - len(st.session_state['trials'])) / len(eligible_words)):.2f} %"
         )
 
 
