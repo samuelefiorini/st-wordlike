@@ -131,8 +131,8 @@ def main():
             is_right_mask[word] = []
             for i, (col, char) in enumerate(zip(columns, word.upper())):
                 if (
-                    char
-                    in set(st.session_state["random_word"].upper()).difference(
+                    char.lower()
+                    in set(st.session_state["random_word"].lower()).difference(
                         set(word[:i])
                     )
                 ) and (st.session_state["random_word"].upper()[i] != char):
@@ -151,64 +151,72 @@ def main():
                 with col:
                     st.title(f":{color}[{char}]")
 
+    eligible_words = vocabulary["word"]
+    # with st.sidebar:
+    #     # Get guessed letters and their number
+    #     chars = "".join(st.session_state["trials"])
+    #     all_guessed = set(st.session_state["random_word"]).intersection(set(chars))
+    #     all_guessed_counts = {
+    #         c: Counter(st.session_state["random_word"])[c] for c in all_guessed
+    #     }
+    #     # Filter words containing the guessed letters with the right count
+    #     right_lettering = vocabulary["word"].apply(
+    #         lambda w: all(c in w for c in all_guessed)
+    #         and all(
+    #             Counter(w)[c] == all_guessed_counts.get(c, -1)
+    #             for c in set(w).intersection(st.session_state["random_word"])
+    #         )
+    #     )
+    #     eligible_words = vocabulary.loc[right_lettering, "word"]
+    #     # Get best guess
+    #     if len(st.session_state["trial_points"]) > 0:
+    #         best_guess = pd.Series(st.session_state["trial_points"]).idxmax()
+    #         if any(
+    #             i == "OK"
+    #             for i in [list(d.values())[0] for d in is_right_mask[best_guess]]
+    #         ):
+    #             # Check matches with positions
+    #             eligible_words_table = vocabulary["word"].apply(
+    #                 lambda x: pd.Series(list(x))
+    #             )
+    #             right_positions = []
+    #             for i, d in enumerate(is_right_mask[best_guess]):
+    #                 char, status = list(d.items())[0]
+    #                 if status == "OK":
+    #                     right_positions.append(eligible_words_table[i] == char.lower())
+    #             right_positions.append(
+    #                 pd.Series([True] * len(eligible_words_table))
+    #             )  # just in case it's empty
+    #             right_positions = pd.concat(right_positions, axis="columns").apply(
+    #                 all, axis=1
+    #             )
+    #             eligible_words = vocabulary[right_lettering & right_positions]
+
+    #     if st.checkbox("Show hints"):
+    #         st.write(eligible_words["word"].sort_values())
+
     with st.sidebar:
-        # Get guessed letters and their number
-        chars = "".join(st.session_state["trials"])
-        all_guessed = set(st.session_state["random_word"]).intersection(set(chars))
-        all_guessed_counts = {
-            c: Counter(st.session_state["random_word"])[c] for c in all_guessed
-        }
-        # Filter words containing the guessed letters with the right count
-        right_lettering = vocabulary["word"].apply(
-            lambda w: all(c in w for c in all_guessed)
-            and all(
-                Counter(w)[c] == all_guessed_counts.get(c, -1)
-                for c in set(w).intersection(st.session_state["random_word"])
-            )
-        )
-        eligible_words = vocabulary.loc[right_lettering, "word"]
-        # Get best guess
-        if len(st.session_state["trial_points"]) > 0:
-            best_guess = pd.Series(st.session_state["trial_points"]).idxmax()
-            if any(
-                i == "OK"
-                for i in [list(d.values())[0] for d in is_right_mask[best_guess]]
-            ):
-                # Check matches with positions
-                eligible_words_table = vocabulary["word"].apply(
-                    lambda x: pd.Series(list(x))
-                )
-                right_positions = []
-                for i, d in enumerate(is_right_mask[best_guess]):
-                    char, status = list(d.items())[0]
-                    if status == "OK":
-                        right_positions.append(eligible_words_table[i] == char.lower())
-                right_positions.append(
-                    pd.Series([True] * len(eligible_words_table))
-                )  # just in case it's empty
-                right_positions = pd.concat(right_positions, axis="columns").apply(
-                    all, axis=1
-                )
-                eligible_words = vocabulary[right_lettering & right_positions]
-
-        if st.checkbox("Show hints"):
-            st.write(eligible_words["word"].sort_values())
-
         st.caption("Stats:")
         st.caption(f"- N° eligible words: {len(eligible_words)}")
         st.caption(
-            f"- Chance: {(100 * (max_n_trials - len(st.session_state['trials'])) / len(eligible_words)):.2f} %"
+            f"- Chance: {(100 * (max_n_trials - len(st.session_state['trials'])) / len(eligible_words)):.4f} %"
         )
 
-    if st.checkbox("Cheat", False):
-        st.title(
-            f"The secret random word is: `{st.session_state['random_word'].upper()}`"
-        )
+    left, right = st.columns((1, 5))
+    with left:
+        st.markdown("</br>", unsafe_allow_html=True)
+        st.markdown("</br>", unsafe_allow_html=True)
+        cheat = st.button("😏 Cheat")
+    with right:
+        if cheat:
+            st.title(
+                f"The secret random word is: `{st.session_state['random_word'].upper()}`"
+            )
 
-    assert (
-        st.session_state["random_word"].lower()
-        in eligible_words["word"].values.tolist()
-    ), "Wrong hints criteria!"
+    # assert (
+    #     st.session_state["random_word"].lower()
+    #     in eligible_words["word"].values.tolist()
+    # ), "Wrong hints criteria!"
 
 
 if __name__ == "__main__":
