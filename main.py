@@ -192,7 +192,7 @@ def main():
                 eligible_words = vocabulary[right_lettering & right_positions]
 
         if st.checkbox("Show hints"):
-            st.write(eligible_words.sort_values())
+            st.write(eligible_words["word"].sort_values())
 
         st.caption("Stats:")
         st.caption(f"- N° eligible words: {len(eligible_words)}")
@@ -204,6 +204,11 @@ def main():
         st.title(
             f"The secret random word is: `{st.session_state['random_word'].upper()}`"
         )
+
+    assert (
+        st.session_state["random_word"].lower()
+        in eligible_words["word"].values.tolist()
+    ), "Wrong hints criteria!"
 
 
 if __name__ == "__main__":
