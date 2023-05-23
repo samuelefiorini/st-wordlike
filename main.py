@@ -112,7 +112,6 @@ def main():
             st.success("🎉 Awesome!")
             st.balloons()
             st.session_state["trials"].append(trial)
-            st.experimental_rerun()
 
     # Show trials recap
     is_right_mask = {}
@@ -204,9 +203,9 @@ def main():
 
     with st.sidebar:
         if len(eligible_words) > 0:
-            chance = (max_n_trials - len(st.session_state["trials"])) / len(
+            chance = min((max_n_trials - len(st.session_state["trials"])) / len(
                 eligible_words
-            )
+            ), 1)
             st.caption("Stats:")
             st.caption(f"- N° eligible words: {len(eligible_words)}")
             st.caption(f"- Chance: {(100 * chance):.4f} %")
@@ -215,7 +214,7 @@ def main():
                 hints = eligible_words.sample(MIN_HINT_WORDS).values.ravel().tolist()
                 for w in hints:
                     st.caption(f"- {w}")
-            elif len(eligible_words) < MIN_HINT_WORDS:
+            elif (len(eligible_words) < MIN_HINT_WORDS) and (st.session_state["random_word"] not in st.session_state["trials"]):
                 st.caption("😏 You are almost there...")
 
             # Sanity check
