@@ -4,6 +4,7 @@ from collections import Counter
 
 from pathlib import Path
 
+MIN_HINT_WORDS = 10
 ROOT = Path(__file__).parent
 
 st.set_page_config(
@@ -189,8 +190,9 @@ def main():
             lambda w: all(i not in w for i in red_letters)
         )
 
-        eligible_words = vocabulary[
-            right_position_words & any_guessed_words & red_letters_words
+        eligible_words = vocabulary.loc[
+            right_position_words & any_guessed_words & red_letters_words,
+            ["word"],
         ]
 
     # ---- STATS --- #
@@ -201,6 +203,11 @@ def main():
         st.caption(
             f"- Chance: {(100 * (max_n_trials - len(st.session_state['trials'])) / len(eligible_words)):.4f} %"
         )
+
+        if (len(eligible_words) > MIN_HINT_WORDS) and st.button("🕵🏻‍♂️ Show hints"):
+            hints = eligible_words["word"].sample(MIN_HINT_WORDS).values.tolist()
+            for w in hints:
+                st.caption(f"- {w}")
 
     # ---- FOOTER --- #
 
@@ -218,7 +225,7 @@ def main():
     # Sanity check
     assert (
         st.session_state["random_word"].lower()
-        in eligible_words["word"].values.tolist()
+        in eligible_words.values.ravel().tolist()
     ), "Wrong hints criteria!"
 
 
