@@ -14,7 +14,6 @@ st.set_page_config(
 )
 _ = st.session_state.setdefault("random_word", None)
 _ = st.session_state.setdefault("trials", [])
-_ = st.session_state.setdefault("trial_points", {})
 
 
 @st.cache_data
@@ -26,7 +25,6 @@ def load_vocabulary(path: str, word_length: int) -> pd.Series:
 def restart():
     st.session_state["random_word"] = None
     st.session_state["trials"] = []
-    st.session_state["trial_points"] = {}
     st.experimental_rerun()
 
 
@@ -110,16 +108,6 @@ def main():
             st.success("🎉 Congratulations!")
             st.balloons()
 
-    # evaluate trial points
-    for word in st.session_state["trials"]:
-        guessed_any_order = len(
-            set(st.session_state["random_word"]).intersection(set(word))
-        )
-        guessed_right_order = sum(
-            [g == c for g, c in zip(word, st.session_state["random_word"])]
-        )
-        st.session_state["trial_points"][word] = guessed_any_order + guessed_right_order
-
     # Show trials recap
     is_right_mask = {}
     if len(st.session_state["trials"]):
@@ -151,7 +139,61 @@ def main():
                 with col:
                     st.title(f":{color}[{char}]")
 
+    # ---- HINTS --- #
+
     eligible_words = vocabulary["word"]
+    # Make random word handy
+    random_word = pd.Series(list(st.session_state["random_word"]))
+    # Convert trials to table with letters
+    trials_table = (
+        pd.Series(st.session_state["trials"])
+        .apply(lambda w: pd.Series(list(w)))
+        .transpose()
+    )
+    # Summarize clues
+    if len(trials_table):
+        # 1. Guessed letters in right positions
+        mask = []
+        for i in trials_table.columns:
+            mask.append(trials_table[i] == random_word)
+        mask = pd.concat(mask, axis=1)
+        right_position = (
+            trials_table[mask].fillna("").apply(lambda x: "".join(x), axis=1)
+        )
+        right_position[right_position == ""] = "*"
+        right_position_words = vocabulary["word"].apply(
+            lambda w: all(
+                (c == w[i]) or (c == "*") for i, c in enumerate(right_position)
+            )
+        )
+        # 2. Guessed letters (in wrong position or any)
+        mask = trials_table.applymap(lambda c: c in st.session_state["random_word"])
+        any_guessed = (
+            pd.Series(trials_table[mask].values.ravel())
+            .dropna()
+            .drop_duplicates()
+            .tolist()
+        )
+        any_guessed_words = vocabulary["word"].apply(
+            lambda w: all(i in w for i in any_guessed)
+        )
+        # 3. Red letters (not in secret word)
+        mask = trials_table.applymap(lambda c: c not in st.session_state["random_word"])
+        red_letters = (
+            pd.Series(trials_table[mask].values.ravel())
+            .dropna()
+            .drop_duplicates()
+            .tolist()
+        )
+        red_letters_words = vocabulary["word"].apply(
+            lambda w: all(i not in w for i in red_letters)
+        )
+
+        eligible_words = vocabulary[
+            right_position_words & any_guessed_words & red_letters_words
+        ]
+
+    # ---- STATS --- #
 
     with st.sidebar:
         st.caption("Stats:")
@@ -159,6 +201,8 @@ def main():
         st.caption(
             f"- Chance: {(100 * (max_n_trials - len(st.session_state['trials'])) / len(eligible_words)):.4f} %"
         )
+
+    # ---- FOOTER --- #
 
     left, right = st.columns((1, 5))
     with left:
@@ -173,7 +217,8 @@ def main():
 
     # Sanity check
     assert (
-        st.session_state["random_word"].lower() in eligible_words.values.tolist()
+        st.session_state["random_word"].lower()
+        in eligible_words["word"].values.tolist()
     ), "Wrong hints criteria!"
 
 
