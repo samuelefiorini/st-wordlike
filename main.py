@@ -1,10 +1,9 @@
 import pandas as pd
 import streamlit as st
-from collections import Counter
 
 from pathlib import Path
 
-MIN_HINT_WORDS = 10
+MIN_HINT_WORDS = 5
 ROOT = Path(__file__).parent
 
 st.set_page_config(
@@ -51,7 +50,7 @@ def main():
         max_n_trials = st.slider(
             "N° trials", min_value=3, max_value=10, value=6, step=1
         )
-        if st.button("🧹 Restart") or (
+        if st.button("🎲 New game") or (
             (st.session_state["random_word"] is not None)
             and (word_length != len(st.session_state["random_word"]))
         ):
@@ -86,7 +85,7 @@ def main():
                     )
 
             # Submit a new trial
-            submitted = st.form_submit_button("Enter")
+            submitted = st.form_submit_button("🚀 Enter")
             if submitted:
                 trial = "".join(trial_parts.values()).lower()
     elif st.session_state["random_word"] in st.session_state["trials"]:
@@ -165,7 +164,7 @@ def main():
             mask.append(trials_table[i] == random_word)
         mask = pd.concat(mask, axis=1)
         right_position = (
-            trials_table[mask].fillna("").apply(lambda x: "".join(x), axis=1)
+            trials_table[mask].fillna("").apply(lambda x: "".join(set(x)), axis=1)
         )
         right_position[right_position == ""] = "*"
         right_position_words = vocabulary["word"].apply(
@@ -212,10 +211,12 @@ def main():
             st.caption(f"- N° eligible words: {len(eligible_words)}")
             st.caption(f"- Chance: {(100 * chance):.4f} %")
 
-            if (len(eligible_words) > MIN_HINT_WORDS) and st.button("🕵🏻‍♂️ Show hints"):
+            if (len(eligible_words) >= MIN_HINT_WORDS) and st.button("🕵🏻‍♂️ Show hints"):
                 hints = eligible_words.sample(MIN_HINT_WORDS).values.ravel().tolist()
                 for w in hints:
                     st.caption(f"- {w}")
+            elif len(eligible_words) < MIN_HINT_WORDS:
+                st.caption("😏 You are almost there...")
 
             # Sanity check
             assert (
@@ -229,7 +230,7 @@ def main():
     with left:
         st.markdown("</br>", unsafe_allow_html=True)
         st.markdown("</br>", unsafe_allow_html=True)
-        cheat = st.button("😏 Cheat")
+        cheat = st.button("🫣 Cheat")
     with right:
         if cheat:
             st.title(
