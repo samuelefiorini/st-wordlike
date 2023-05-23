@@ -69,7 +69,9 @@ def main():
 
     # Trials submission
     trial = None
-    if len(list(st.session_state["trials"])) <= max_n_trials:
+    if (len(list(st.session_state["trials"])) <= max_n_trials) and (
+        st.session_state["random_word"] not in st.session_state["trials"]
+    ):
         with st.form("trials_form", clear_on_submit=True):
             trial_parts = {}
             columns = st.columns(word_length)
@@ -87,8 +89,10 @@ def main():
             submitted = st.form_submit_button("Enter")
             if submitted:
                 trial = "".join(trial_parts.values()).lower()
+    elif st.session_state["random_word"] in st.session_state["trials"]:
+        st.title("🎯 You win!")
     else:
-        st.title("💀 GAME OVER 💀")
+        st.title("💀 GAME OVER")
         st.write(
             f"The secret random word was: `{st.session_state['random_word'].upper()}`"
         )
@@ -102,12 +106,14 @@ def main():
             st.session_state["trials"].append(trial)
             st.experimental_rerun()
         elif trial in list(st.session_state["trials"]):
-            st.warning("🤦🏻‍♂️ You cannot submit the same word twice!")
+            st.warning("🤦🏻‍♂️ Don't try the same word again!")
         elif not is_legit(trial, vocabulary):
             st.error(f"❌ Unknown word: {trial}")
         elif trial == st.session_state["random_word"]:
-            st.success("🎉 Congratulations!")
+            st.success("🎉 Awesome!")
             st.balloons()
+            st.session_state["trials"].append(trial)
+            st.experimental_rerun()
 
     # Show trials recap
     is_right_mask = {}
@@ -198,16 +204,24 @@ def main():
     # ---- STATS --- #
 
     with st.sidebar:
-        st.caption("Stats:")
-        st.caption(f"- N° eligible words: {len(eligible_words)}")
-        st.caption(
-            f"- Chance: {(100 * (max_n_trials - len(st.session_state['trials'])) / len(eligible_words)):.4f} %"
-        )
+        if len(eligible_words) > 0:
+            chance = (max_n_trials - len(st.session_state["trials"])) / len(
+                eligible_words
+            )
+            st.caption("Stats:")
+            st.caption(f"- N° eligible words: {len(eligible_words)}")
+            st.caption(f"- Chance: {(100 * chance):.4f} %")
 
-        if (len(eligible_words) > MIN_HINT_WORDS) and st.button("🕵🏻‍♂️ Show hints"):
-            hints = eligible_words["word"].sample(MIN_HINT_WORDS).values.tolist()
-            for w in hints:
-                st.caption(f"- {w}")
+            if (len(eligible_words) > MIN_HINT_WORDS) and st.button("🕵🏻‍♂️ Show hints"):
+                hints = eligible_words["word"].sample(MIN_HINT_WORDS).values.tolist()
+                for w in hints:
+                    st.caption(f"- {w}")
+
+            # Sanity check
+            assert (
+                st.session_state["random_word"].lower()
+                in eligible_words.values.ravel().tolist()
+            ), "🪲 Oh no! This is a bug."
 
     # ---- FOOTER --- #
 
@@ -221,12 +235,6 @@ def main():
             st.title(
                 f"The secret random word is: `{st.session_state['random_word'].upper()}`"
             )
-
-    # Sanity check
-    assert (
-        st.session_state["random_word"].lower()
-        in eligible_words.values.ravel().tolist()
-    ), "Wrong hints criteria!"
 
 
 if __name__ == "__main__":
