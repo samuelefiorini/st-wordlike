@@ -213,7 +213,7 @@ def main():
             st.caption(f"- Chance: {(100 * chance):.4f} %")
 
             if (len(eligible_words) > MIN_HINT_WORDS) and st.button("🕵🏻‍♂️ Show hints"):
-                hints = eligible_words["word"].sample(MIN_HINT_WORDS).values.tolist()
+                hints = eligible_words.sample(MIN_HINT_WORDS).values.ravel().tolist()
                 for w in hints:
                     st.caption(f"- {w}")
 
